@@ -147,8 +147,8 @@ fileprivate struct MD5State {
     @inline(__always) @discardableResult
     private mutating func feedFullChunks(in message: Data) -> Int {
         let chunkCount = message.count / MD5State.chunkSize
-        message.withUnsafeBytes { (pointer: UnsafePointer<UInt32>) -> Void in
-            var cursor = pointer
+        message.withUnsafeBytes { (pointer) -> Void in
+            var cursor = pointer.bindMemory(to: UInt32.self)
             for _ in 0 ..< chunkCount {
                 feed(chunkPointer: &cursor)
             }
@@ -162,9 +162,9 @@ fileprivate struct MD5State {
         let low  = UInt64(c) | UInt64(d) << 32
         return (high, low)
     }
-
-    private mutating func feed(chunkPointer ptr: inout UnsafePointer<UInt32>) {
-
+    
+    private mutating func feed(chunkPointer ptr: inout UnsafeBufferPointer<UInt32>) {
+        
         let old = self
 
         feed(f0, ptr[00], 0xd76aa478, 07); feed(f0, ptr[01], 0xe8c7b756, 12)
@@ -204,8 +204,9 @@ fileprivate struct MD5State {
         feed(f3, ptr[02], 0x2ad7d2bb, 15); feed(f3, ptr[09], 0xeb86d391, 21)
 
         (a, b, c, d) = (a &+ old.a, b &+ old.b, c &+ old.c, d &+ old.d)
+        
+        ptr = UnsafeBufferPointer(rebasing: ptr.dropFirst(15))
 
-        ptr = ptr.advanced(by: 16)
     }
 
     private var f0: UInt32 { return (b & c) | (~b & d) }
